@@ -40,7 +40,7 @@ Install_Tomcat9() {
   pushd ${tomcat_install_dir}/lib/catalina
   jar xf ../catalina.jar
   sed -i 's@^server.info=.*@server.info=Tomcat@' org/apache/catalina/util/ServerInfo.properties
-  sed -i 's@^server.number=.*@server.number=8@' org/apache/catalina/util/ServerInfo.properties
+  sed -i 's@^server.number=.*@server.number=9@' org/apache/catalina/util/ServerInfo.properties
   sed -i "s@^server.built=.*@server.built=$(date)@" org/apache/catalina/util/ServerInfo.properties
   jar cf ../catalina.jar ./*
   popd
@@ -70,7 +70,7 @@ EOF
     /bin/cp ${oneinstack_dir}/config/server.xml ${tomcat_install_dir}/conf
     sed -i "s@/usr/local/tomcat@${tomcat_install_dir}@g" ${tomcat_install_dir}/conf/server.xml
 
-    if [ ! -e "${nginx_install_dir}/sbin/nginx" -a ! -e "${tengine_install_dir}/sbin/nginx" -a ! -e "${apache_install_dir}/conf/httpd.conf" ]; then
+    if [ ! -e "${nginx_install_dir}/sbin/nginx" -a ! -e "${tengine_install_dir}/sbin/nginx" -a ! -e "${openresty_install_dir}/nginx/sbin/nginx" -a ! -e "${apache_install_dir}/conf/httpd.conf" ]; then
       if [ "${iptables_yn}" == 'y' ]; then
         if [ "${OS}" == "CentOS" ]; then
           if [ -z "$(grep -w '8080' /etc/sysconfig/iptables)" ]; then

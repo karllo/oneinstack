@@ -19,6 +19,7 @@ printf "
 # Check if user is root
 [ $(id -u) != '0' ] && { echo "${CFAILURE}Error: You must be root to run this script${CEND}"; exit 1; }
 
+ARG1=$1
 oneinstack_dir=$(dirname "`readlink -f $0`")
 pushd ${oneinstack_dir} > /dev/null
 . ./options.conf
@@ -168,12 +169,13 @@ If you enter '.', the field will be left blank.
 
     openssl req -new -newkey rsa:2048 -sha256 -nodes -out ${PATH_SSL}/${domain}.csr -keyout ${PATH_SSL}/${domain}.key -subj "/C=${SELFSIGNEDSSL_C}/ST=${SELFSIGNEDSSL_ST}/L=${SELFSIGNEDSSL_L}/O=${SELFSIGNEDSSL_O}/OU=${SELFSIGNEDSSL_OU}/CN=${domain}" > /dev/null 2>&1
     openssl x509 -req -days 36500 -sha256 -in ${PATH_SSL}/${domain}.csr -signkey ${PATH_SSL}/${domain}.key -out ${PATH_SSL}/${domain}.crt > /dev/null 2>&1
-  elif [ "${Domian_Mode}" == '3' -o "$1" == 'dnsapi' ]; then
-    echo "${CMSG}More: https://oneinstack.com/faq/letsencrypt${CEND}"
-    if [ "${moredomain}" == "*.${domain}" ]; then
+  elif [ "${Domian_Mode}" == '3' -o "${ARG1}" == 'dnsapi' ]; then
+    if [ "${moredomain}" == "*.${domain}" -o "${ARG1}" == 'dnsapi' ]; then
       while :; do echo
-        read -p "Please enter your DNS provider: " DNS_PRO
+        echo 'Please select DNS provider:'
         echo "${CMSG}dp${CEND},${CMSG}cx${CEND},${CMSG}ali${CEND},${CMSG}cf${CEND},${CMSG}aws${CEND},${CMSG}linode${CEND},${CMSG}he${CEND},${CMSG}namesilo${CEND},${CMSG}dgon${CEND},${CMSG}freedns${CEND},${CMSG}gd${CEND},${CMSG}namecom${CEND} and so on."
+        echo "${CMSG}More: https://oneinstack.com/faq/letsencrypt${CEND}"
+        read -p "Please enter your DNS provider: " DNS_PRO
         if [ -e ~/.acme.sh/dnsapi/dns_${DNS_PRO}.sh ]; then
           break
         else
@@ -232,10 +234,11 @@ EOF
     fi
     if [ -s ~/.acme.sh/${domain}/fullchain.cer ]; then
       [ -e "${PATH_SSL}/${domain}.crt" ] && rm -rf ${PATH_SSL}/${domain}.{crt,key}
+      [ -e /bin/systemctl -a -e /lib/systemd/system/nginx.service ] && Nginx_cmd='/bin/systemctl restart nginx' || Nginx_cmd='/etc/init.d/nginx force-reload'
       if [ -e "${web_install_dir}/sbin/nginx" -a -e "${apache_install_dir}/conf/httpd.conf" ]; then
-        Command="/etc/init.d/nginx force-reload;/etc/init.d/httpd graceful"
+        Command="${Nginx_cmd};/etc/init.d/httpd graceful"
       elif [ -e "${web_install_dir}/sbin/nginx" -a ! -e "${apache_install_dir}/conf/httpd.conf" ]; then
-        Command="/etc/init.d/nginx force-reload"
+        Command="${Nginx_cmd}"
       elif [ ! -e "${web_install_dir}/sbin/nginx" -a -e "${apache_install_dir}/conf/httpd.conf" ]; then
         Command="/etc/init.d/httpd graceful"
       fi
@@ -252,14 +255,14 @@ Print_ssl() {
     echo "$(printf "%-30s" "Self-signed SSL Certificate:")${CMSG}${PATH_SSL}/${domain}.crt${CEND}"
     echo "$(printf "%-30s" "SSL Private Key:")${CMSG}${PATH_SSL}/${domain}.key${CEND}"
     echo "$(printf "%-30s" "SSL CSR File:")${CMSG}${PATH_SSL}/${domain}.csr${CEND}"
-  elif [ "${Domian_Mode}" == '3' -o "$1" == 'dnsapi' ]; then
+  elif [ "${Domian_Mode}" == '3' -o "${ARG1}" == 'dnsapi' ]; then
     echo "$(printf "%-30s" "Let's Encrypt SSL Certificate:")${CMSG}${PATH_SSL}/${domain}.crt${CEND}"
     echo "$(printf "%-30s" "SSL Private Key:")${CMSG}${PATH_SSL}/${domain}.key${CEND}"
   fi
 }
 
 Input_Add_domain() {
-  if [ "$1" != 'dnsapi' ]; then
+  if [ "${ARG1}" != 'dnsapi' ]; then
     while :;do
       printf "
 What Are You Doing?
@@ -276,7 +279,7 @@ What Are You Doing?
       fi
     done
   fi
-  if [ "${Domian_Mode}" == '3' -o "$1" == 'dnsapi' ] && [ ! -e ~/.acme.sh/acme.sh ]; then
+  if [ "${Domian_Mode}" == '3' -o "${ARG1}" == 'dnsapi' ] && [ ! -e ~/.acme.sh/acme.sh ]; then
     pushd ${oneinstack_dir}/src > /dev/null
     [ ! -e acme.sh-master.tar.gz ] && wget -qc http://mirrors.linuxeye.com/oneinstack/src/acme.sh-master.tar.gz
     tar xzf acme.sh-master.tar.gz
@@ -285,7 +288,7 @@ What Are You Doing?
     popd > /dev/null
     popd > /dev/null
   fi
-  if [[ "${Domian_Mode}" =~ ^[2-3]$ ]] || [ "$1" == 'dnsapi' ]; then
+  if [[ "${Domian_Mode}" =~ ^[2-3]$ ]] || [ "${ARG1}" == 'dnsapi' ]; then
     if [ -e "${web_install_dir}/sbin/nginx" ]; then
       nginx_ssl_flag=y
       PATH_SSL=${web_install_dir}/conf/ssl
@@ -404,7 +407,7 @@ What Are You Doing?
 Nginx_anti_hotlinking() {
   while :; do echo
     read -p "Do you want to add hotlink protection? [y/n]: " anti_hotlinking_flag
-    if [[ ! $anti_hotlinking_flag =~ ^[y,n]$ ]]; then
+    if [[ ! ${anti_hotlinking_flag} =~ ^[y,n]$ ]]; then
       echo "${CWARNING}input error! Please only input 'y' or 'n'${CEND}"
     else
       break
@@ -418,7 +421,7 @@ Nginx_anti_hotlinking() {
   fi
 
   if [ "${anti_hotlinking_flag}" == 'y' ]; then
-    if [ "${moredomainame_flag}" == 'y' ]; then
+    if [ "${moredomainame_flag}" == 'y' -a "${moredomain}" != "*.${domain}" ]; then
       domain_allow_all=${domain_allow}${moredomainame}
     else
       domain_allow_all=${domain_allow}
@@ -1049,7 +1052,7 @@ List_Vhost() {
 if [ $# == 0 ]; then
   Add_Vhost
 elif [ $# == 1 ]; then
-  case $1 in
+  case ${ARG1} in
   add|dnsapi)
     Add_Vhost
     ;;
