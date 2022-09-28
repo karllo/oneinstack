@@ -1,22 +1,24 @@
 #!/bin/bash
 # Author:  yeho <lj2007331 AT gmail.com>
-# BLOG:  https://blog.linuxeye.cn
+# BLOG:  https://linuxeye.com
 #
-# Notes: OneinStack for CentOS/RadHat 6+ Debian 6+ and Ubuntu 12+
+# Notes: OneinStack for CentOS/RedHat 7+ Debian 9+ and Ubuntu 16+
 #
 # Project home page:
 #       https://oneinstack.com
-#       https://github.com/lj2007331/oneinstack
+#       https://github.com/oneinstack/oneinstack
 
 Install_MongoDB() {
   pushd ${oneinstack_dir}/src > /dev/null
   id -u mongod >/dev/null 2>&1
   [ $? -ne 0 ] && useradd -s /sbin/nologin mongod
   mkdir -p ${mongo_data_dir};chown mongod.mongod -R ${mongo_data_dir}
-  tar xzf mongodb-linux-${SYS_BIT_b}-${mongodb_ver}.tgz
-  /bin/mv mongodb-linux-${SYS_BIT_b}-${mongodb_ver} ${mongo_install_dir}
-  [ "${OS}" == "CentOS" ] && { /bin/cp ../init.d/MongoDB-init-CentOS /etc/init.d/mongod; sed -i "s@/usr/local/mongodb@${mongo_install_dir}@g" /etc/init.d/mongod; chkconfig --add mongod; chkconfig mongod on; }
-  [[ "${OS}" =~ ^Ubuntu$|^Debian$ ]] && { /bin/cp ../init.d/MongoDB-init-Ubuntu /etc/init.d/mongod; sed -i "s@/usr/local/mongodb@${mongo_install_dir}@g" /etc/init.d/mongod; update-rc.d mongod defaults; }
+  tar xzf mongodb-linux-x86_64-${mongodb_ver}.tgz
+  /bin/mv mongodb-linux-x86_64-${mongodb_ver} ${mongo_install_dir}
+  /bin/cp ${oneinstack_dir}/init.d/mongod.service /lib/systemd/system/
+  sed -i "s@=/usr/local/mongodb@=${mongo_install_dir}@g" /lib/systemd/system/mongod.service
+  systemctl enable mongod
+
   cat > /etc/mongod.conf << EOF
 # mongod.conf
 
@@ -57,18 +59,18 @@ net:
 #replication:
 #sharding:
 EOF
-  service mongod start
+  systemctl start mongod
   echo ${mongo_install_dir}/bin/mongo 127.0.0.1/admin --eval \"db.createUser\(\{user:\'root\',pwd:\'$dbmongopwd\',roles:[\'userAdminAnyDatabase\']\}\)\" | bash
   sed -i 's@^#security:@security:@' /etc/mongod.conf
   sed -i 's@^#  authorization:@  authorization:@' /etc/mongod.conf
   if [ -e "${mongo_install_dir}/bin/mongo" ]; then
     sed -i "s+^dbmongopwd.*+dbmongopwd='$dbmongopwd'+" ../options.conf
     echo "${CSUCCESS}MongoDB installed successfully! ${CEND}"
-    rm -rf mongodb-linux-${SYS_BIT_b}-${mongodb_ver}
+    rm -rf mongodb-linux-x86_64-${mongodb_ver}
   else
     rm -rf ${mongo_install_dir} ${mongo_data_dir}
-    echo "${CFAILURE}MongoDB install failed, Please contact the author! ${CEND}"
-    kill -9 $$
+    echo "${CFAILURE}MongoDB install failed, Please contact the author! ${CEND}" && lsb_release -a
+    kill -9 $$; exit 1;
   fi
   popd
   [ -z "$(grep ^'export PATH=' /etc/profile)" ] && echo "export PATH=${mongo_install_dir}/bin:\$PATH" >> /etc/profile

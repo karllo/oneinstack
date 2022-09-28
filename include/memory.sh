@@ -1,13 +1,15 @@
 #!/bin/bash
 # Author:  yeho <lj2007331 AT gmail.com>
-# BLOG:  https://blog.linuxeye.cn
+# BLOG:  https://linuxeye.com
 #
-# Notes: OneinStack for CentOS/RadHat 6+ Debian 6+ and Ubuntu 12+
+# Notes: OneinStack for CentOS/RedHat 7+ Debian 9+ and Ubuntu 16+
 #
 # Project home page:
 #       https://oneinstack.com
-#       https://github.com/lj2007331/oneinstack
+#       https://github.com/oneinstack/oneinstack
 
+export LANG=en_US.UTF-8
+export LANGUAGE=en_US:en
 Mem=`free -m | awk '/Mem:/{print $2}'`
 Swap=`free -m | awk '/Swap:/{print $2}'`
 
@@ -35,21 +37,12 @@ elif [ $Mem -gt 8000 ]; then
   Memory_limit=448
 fi
 
-Make-swapfile() {
-  dd if=/dev/zero of=/swapfile count=$COUNT bs=1M
+# add swapfile
+if [ ! -e ~/.oneinstack ] && [ "${Swap}" == '0' ] && [ ${Mem} -le 2048 ]; then
+  echo "${CWARNING}Add Swap file, It may take a few minutes... ${CEND}"
+  dd if=/dev/zero of=/swapfile count=2048 bs=1M
   mkswap /swapfile
   swapon /swapfile
   chmod 600 /swapfile
   [ -z "`grep swapfile /etc/fstab`" ] && echo '/swapfile    swap    swap    defaults    0 0' >> /etc/fstab
-}
-
-# add swapfile
-if [ "$Swap" == '0' ]; then
-  if [ $Mem -le 1024 ]; then
-    COUNT=1024
-    Make-swapfile
-  elif [ $Mem -gt 1024 -a $Mem -le 2048 ]; then
-    COUNT=2048
-    Make-swapfile
-  fi
 fi

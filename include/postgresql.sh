@@ -1,12 +1,12 @@
 #!/bin/bash
 # Author:  yeho <lj2007331 AT gmail.com>
-# BLOG:  https://blog.linuxeye.cn
+# BLOG:  https://linuxeye.com
 #
-# Notes: OneinStack for CentOS/RadHat 6+ Debian 6+ and Ubuntu 12+
+# Notes: OneinStack for CentOS/RedHat 7+ Debian 9+ and Ubuntu 16+
 #
 # Project home page:
 #       https://oneinstack.com
-#       https://github.com/lj2007331/oneinstack
+#       https://github.com/oneinstack/oneinstack
 
 Install_PostgreSQL() {
   pushd ${oneinstack_dir}/src > /dev/null
@@ -20,15 +20,13 @@ Install_PostgreSQL() {
   make install
   chmod 755 ${pgsql_install_dir}
   chown -R postgres.postgres ${pgsql_install_dir}
-  /bin/cp ./contrib/start-scripts/linux /etc/init.d/postgresql
-  sed -i "s@^prefix=.*@prefix=${pgsql_install_dir}@" /etc/init.d/postgresql
-  sed -i "s@^PGDATA=.*@PGDATA=${pgsql_data_dir}@" /etc/init.d/postgresql
-  chmod +x /etc/init.d/postgresql
-  [ "${OS}" == "CentOS" ] && { chkconfig --add postgresql; chkconfig postgresql on; }
-  [[ "${OS}" =~ ^Ubuntu$|^Debian$ ]] && update-rc.d postgresql defaults
+  /bin/cp ${oneinstack_dir}/init.d/postgresql.service /lib/systemd/system/
+  sed -i "s@=/usr/local/pgsql@=${pgsql_install_dir}@g" /lib/systemd/system/postgresql.service
+  sed -i "s@PGDATA=.*@PGDATA=${pgsql_data_dir}@" /lib/systemd/system/postgresql.service
+  systemctl enable postgresql
   popd
   su - postgres -c "${pgsql_install_dir}/bin/initdb -D ${pgsql_data_dir}"
-  service postgresql start
+  systemctl start postgresql
   sleep 5
   su - postgres -c "${pgsql_install_dir}/bin/psql -c \"alter user postgres with password '$dbpostgrespwd';\""
   sed -i 's@^host.*@#&@g' ${pgsql_data_dir}/pg_hba.conf
@@ -36,15 +34,15 @@ Install_PostgreSQL() {
   echo 'local   all             all                                     md5' >> ${pgsql_data_dir}/pg_hba.conf
   echo 'host    all             all             0.0.0.0/0               md5' >> ${pgsql_data_dir}/pg_hba.conf
   sed -i "s@^#listen_addresses.*@listen_addresses = '*'@" ${pgsql_data_dir}/postgresql.conf
-  service postgresql reload
+  systemctl reload postgresql
 
   if [ -e "${pgsql_install_dir}/bin/psql" ]; then
     sed -i "s+^dbpostgrespwd.*+dbpostgrespwd='$dbpostgrespwd'+" ../options.conf
     echo "${CSUCCESS}PostgreSQL installed successfully! ${CEND}"
   else
     rm -rf ${pgsql_install_dir} ${pgsql_data_dir}
-    echo "${CFAILURE}PostgreSQL install failed, Please contact the author! ${CEND}"
-    kill -9 $$
+    echo "${CFAILURE}PostgreSQL install failed, Please contact the author! ${CEND}" && lsb_release -a
+    kill -9 $$; exit 1;
   fi
   popd
   [ -z "$(grep ^'export PATH=' /etc/profile)" ] && echo "export PATH=${pgsql_install_dir}/bin:\$PATH" >> /etc/profile

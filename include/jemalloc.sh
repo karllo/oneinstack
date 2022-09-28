@@ -1,24 +1,23 @@
 #!/bin/bash
 # Author:  yeho <lj2007331 AT gmail.com>
-# BLOG:  https://blog.linuxeye.cn
+# BLOG:  https://linuxeye.com
 #
-# Notes: OneinStack for CentOS/RadHat 6+ Debian 6+ and Ubuntu 12+
+# Notes: OneinStack for CentOS/RedHat 7+ Debian 9+ and Ubuntu 16+
 #
 # Project home page:
 #       https://oneinstack.com
-#       https://github.com/lj2007331/oneinstack
+#       https://github.com/oneinstack/oneinstack
 
 Install_Jemalloc() {
   if [ ! -e "/usr/local/lib/libjemalloc.so" ]; then
     pushd ${oneinstack_dir}/src > /dev/null
-    tar xjf jemalloc-$jemalloc_ver.tar.bz2
-    pushd jemalloc-$jemalloc_ver
-    LDFLAGS="${LDFLAGS} -lrt" ./configure
+    tar xjf jemalloc-${jemalloc_ver}.tar.bz2
+    pushd jemalloc-${jemalloc_ver} > /dev/null
+    ./configure
     make -j ${THREAD} && make install
-    unset LDFLAGS
-    popd
+    popd > /dev/null
     if [ -f "/usr/local/lib/libjemalloc.so" ]; then
-      if [ "${OS_BIT}" == '64' -a "$OS" == 'CentOS' ]; then
+      if [ "${Family}" == 'rhel' ]; then
         ln -s /usr/local/lib/libjemalloc.so.2 /usr/lib64/libjemalloc.so.1
       else
         ln -s /usr/local/lib/libjemalloc.so.2 /usr/lib/libjemalloc.so.1
@@ -28,9 +27,9 @@ Install_Jemalloc() {
       echo "${CSUCCESS}jemalloc module installed successfully! ${CEND}"
       rm -rf jemalloc-${jemalloc_ver}
     else
-      echo "${CFAILURE}jemalloc install failed, Please contact the author! ${CEND}"
-      kill -9 $$
+      echo "${CFAILURE}jemalloc install failed, Please contact the author! ${CEND}" && lsb_release -a
+      kill -9 $$; exit 1;
     fi
-    popd
+    popd > /dev/null
   fi
 }

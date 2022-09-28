@@ -1,12 +1,12 @@
 #!/bin/bash
 # Author:  yeho <lj2007331 AT gmail.com>
-# BLOG:  https://blog.linuxeye.cn
+# BLOG:  https://linuxeye.com
 #
-# Notes: OneinStack for CentOS/RadHat 6+ Debian 6+ and Ubuntu 12+
+# Notes: OneinStack for CentOS/RedHat 7+ Debian 9+ and Ubuntu 16+
 #
 # Project home page:
 #       https://oneinstack.com
-#       https://github.com/lj2007331/oneinstack
+#       https://github.com/oneinstack/oneinstack
 
 Install_Percona57() {
   pushd ${oneinstack_dir}/src > /dev/null
@@ -17,10 +17,10 @@ Install_Percona57() {
   mkdir -p ${percona_data_dir};chown mysql.mysql -R ${percona_data_dir}
 
   if [ "${dbinstallmethod}" == "1" ]; then
-    tar xzf Percona-Server-${percona57_ver}-Linux.${SYS_BIT_b}.${sslLibVer}.tar.gz
-    mv Percona-Server-${percona57_ver}-Linux.${SYS_BIT_b}.${sslLibVer}/* ${percona_install_dir}
+    tar xzf Percona-Server-${percona57_ver}-Linux.x86_64.glibc2.12.tar.gz
+    mv Percona-Server-${percona57_ver}-Linux.x86_64.glibc2.12/* ${percona_install_dir}
     sed -i 's@executing mysqld_safe@executing mysqld_safe\nexport LD_PRELOAD=/usr/local/lib/libjemalloc.so@' ${percona_install_dir}/bin/mysqld_safe
-    sed -i "s@/usr/local/Percona-Server-${percona57_ver}-Linux.${SYS_BIT_b}.${sslLibVer}@${percona_install_dir}@g" ${percona_install_dir}/bin/mysqld_safe
+    sed -i "s@Percona-Server-${percona57_ver}-Linux.x86_64.glibc2.12@${percona_install_dir}@g" ${percona_install_dir}/bin/mysqld_safe
   elif [ "${dbinstallmethod}" == "2" ]; then
     boostVersion2=$(echo ${boost_oldver} | awk -F. '{print $1"_"$2"_"$3}')
     tar xzf boost_${boostVersion2}.tar.gz
@@ -54,22 +54,22 @@ Install_Percona57() {
     sed -i "s+^dbrootpwd.*+dbrootpwd='${dbrootpwd}'+" ../options.conf
     echo "${CSUCCESS}Percona installed successfully! ${CEND}"
     if [ "${dbinstallmethod}" == "1" ]; then
-      rm -rf Percona-Server-${percona57_ver}-Linux.${SYS_BIT_b}.${sslLibVer}
+      rm -rf Percona-Server-${percona57_ver}-Linux.x86_64.${sslLibVer}
     elif [ "${dbinstallmethod}" == "2" ]; then
-      rm -rf percona-server-${percona57_ver}
+      rm -rf percona-server-${percona57_ver} boost_${boostVersion2}
     fi
   else
     rm -rf ${percona_install_dir}
-    echo "${CFAILURE}Percona install failed, Please contact the author! ${CEND}"
-    kill -9 $$
+    echo "${CFAILURE}Percona install failed, Please contact the author! ${CEND}" && lsb_release -a
+    kill -9 $$; exit 1;
   fi
 
   /bin/cp ${percona_install_dir}/support-files/mysql.server /etc/init.d/mysqld
   sed -i "s@^basedir=.*@basedir=${percona_install_dir}@" /etc/init.d/mysqld
   sed -i "s@^datadir=.*@datadir=${percona_data_dir}@" /etc/init.d/mysqld
   chmod +x /etc/init.d/mysqld
-  [ "${OS}" == "CentOS" ] && { chkconfig --add mysqld; chkconfig mysqld on; }
-  [[ "${OS}" =~ ^Ubuntu$|^Debian$ ]] && update-rc.d mysqld defaults
+  [ "${PM}" == 'yum' ] && { chkconfig --add mysqld; chkconfig mysqld on; }
+  [ "${PM}" == 'apt-get' ] && update-rc.d mysqld defaults
   popd
 
   # my.cnf
@@ -77,7 +77,6 @@ Install_Percona57() {
 [client]
 port = 3306
 socket = /tmp/mysql.sock
-default-character-set = utf8mb4
 
 [mysql]
 prompt="Percona [\\d]> "
@@ -158,7 +157,6 @@ innodb_lock_wait_timeout = 120
 bulk_insert_buffer_size = 8M
 myisam_sort_buffer_size = 8M
 myisam_max_sort_file_size = 10G
-myisam_repair_threads = 1
 
 interactive_timeout = 28800
 wait_timeout = 28800
@@ -214,9 +212,9 @@ EOF
   ${percona_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'127.0.0.1' identified by \"${dbrootpwd}\" with grant option;"
   ${percona_install_dir}/bin/mysql -e "grant all privileges on *.* to root@'localhost' identified by \"${dbrootpwd}\" with grant option;"
   ${percona_install_dir}/bin/mysql -uroot -p${dbrootpwd} -e "reset master;"
-  rm -rf /etc/ld.so.conf.d/{mysql,mariadb,percona,alisql}*.conf
+  rm -rf /etc/ld.so.conf.d/{mysql,mariadb,percona}*.conf
   [ -e "${percona_install_dir}/my.cnf" ] && rm -rf ${percona_install_dir}/my.cnf
-  echo "${percona_install_dir}/lib" > /etc/ld.so.conf.d/mysql.conf
+  echo "${percona_install_dir}/lib" > /etc/ld.so.conf.d/z-percona.conf
   ldconfig
   service mysqld stop
 }
