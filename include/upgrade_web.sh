@@ -13,7 +13,7 @@ Upgrade_Nginx() {
   [ ! -e "${nginx_install_dir}/sbin/nginx" ] && echo "${CWARNING}Nginx is not installed on your system! ${CEND}" && exit 1
   OLD_nginx_ver_tmp=`${nginx_install_dir}/sbin/nginx -v 2>&1`
   OLD_nginx_ver=${OLD_nginx_ver_tmp##*/}
-  Latest_nginx_ver=`curl --connect-timeout 2 -m 3 -s http://nginx.org/en/CHANGES-1.20 | awk '/Changes with nginx/{print$0}' | awk '{print $4}' | head -1`
+  Latest_nginx_ver=`curl --connect-timeout 2 -m 3 -s http://nginx.org/en/CHANGES-1.22 | awk '/Changes with nginx/{print$0}' | awk '{print $4}' | head -1`
   [ -z "${Latest_nginx_ver}" ] && Latest_nginx_ver=`curl --connect-timeout 2 -m 3 -s http://nginx.org/en/CHANGES | awk '/Changes with nginx/{print$0}' | awk '{print $4}' | head -1`
   echo
   echo "Current Nginx Version: ${CMSG}${OLD_nginx_ver}${CEND}"
@@ -24,9 +24,9 @@ Upgrade_Nginx() {
       [ ! -e "nginx-${NEW_nginx_ver}.tar.gz" ] && wget --no-check-certificate -c http://nginx.org/download/nginx-${NEW_nginx_ver}.tar.gz > /dev/null 2>&1
       if [ -e "nginx-${NEW_nginx_ver}.tar.gz" ]; then
         src_url=https://www.openssl.org/source/openssl-${openssl11_ver}.tar.gz && Download_src
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/ngx_devel_kit.tar.gz && Download_src
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/lua-nginx-module-${lua_nginx_module_ver}.tar.gz && Download_src
+        src_url=${mirror_link}/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
+        src_url=${mirror_link}/oneinstack/src/ngx_devel_kit.tar.gz && Download_src
+        src_url=${mirror_link}/oneinstack/src/lua-nginx-module-${lua_nginx_module_ver}.tar.gz && Download_src
         tar xzf openssl-${openssl11_ver}.tar.gz
         tar xzf pcre-${pcre_ver}.tar.gz
         tar xzf ngx_devel_kit.tar.gz
@@ -48,14 +48,38 @@ Upgrade_Nginx() {
       echo "Press Ctrl+c to cancel or Press any key to continue..."
       char=`get_char`
     fi
-    tar xzf nginx-${NEW_nginx_ver}.tar.gz
-    pushd nginx-${NEW_nginx_ver}
-    make clean
-    sed -i 's@CFLAGS="$CFLAGS -g"@#CFLAGS="$CFLAGS -g"@' auto/cc/gcc # close debug
     ${nginx_install_dir}/sbin/nginx -V &> $$
     nginx_configure_args_tmp=`cat $$ | grep 'configure arguments:' | awk -F: '{print $2}'`
     rm -rf $$
     nginx_configure_args=`echo ${nginx_configure_args_tmp} | sed "s@lua-nginx-module-\w.\w\+.\w\+ @lua-nginx-module-${lua_nginx_module_ver} @" | sed "s@lua-nginx-module @lua-nginx-module-${lua_nginx_module_ver} @" | sed "s@--with-openssl=../openssl-\w.\w.\w\+ @--with-openssl=../openssl-${openssl11_ver} @" | sed "s@--with-pcre=../pcre-\w.\w\+ @--with-pcre=../pcre-${pcre_ver} @"`
+    if [ -n "`echo $nginx_configure_args | grep lua-nginx-module`" ]; then
+      ${oneinstack_dir}/upgrade.sh --oneinstack > /dev/null
+      src_url=${mirror_link}/oneinstack/src/luajit2-${luajit2_ver}.tar.gz && Download_src
+      tar xzf luajit2-${luajit2_ver}.tar.gz
+      pushd luajit2-${luajit2_ver}
+      make && make install
+      popd > /dev/null
+      rm -rf luajit2-${luajit2_ver}
+
+      src_url=${mirror_link}/oneinstack/src/lua-resty-core-${lua_resty_core_ver}.tar.gz && Download_src
+      tar xzf lua-resty-core-${lua_resty_core_ver}.tar.gz
+      pushd lua-resty-core-${lua_resty_core_ver}
+      make install
+      popd > /dev/null
+      rm -rf lua-resty-core-${lua_resty_core_ver}
+
+      src_url=${mirror_link}/oneinstack/src/lua-resty-lrucache-${lua_resty_lrucache_ver}.tar.gz && Download_src
+      tar xzf lua-resty-lrucache-${lua_resty_lrucache_ver}.tar.gz
+      pushd lua-resty-lrucache-${lua_resty_lrucache_ver}
+      make install
+      popd > /dev/null
+      rm -rf lua-resty-lrucache-${lua_resty_lrucache_ver}
+    fi
+
+    tar xzf nginx-${NEW_nginx_ver}.tar.gz
+    pushd nginx-${NEW_nginx_ver}
+    make clean
+    sed -i 's@CFLAGS="$CFLAGS -g"@#CFLAGS="$CFLAGS -g"@' auto/cc/gcc # close debug
     export LUAJIT_LIB=/usr/local/lib
     export LUAJIT_INC=/usr/local/include/luajit-2.1
     ./configure ${nginx_configure_args}
@@ -91,7 +115,7 @@ Upgrade_Tengine() {
       [ ! -e "tengine-${NEW_tengine_ver}.tar.gz" ] && wget --no-check-certificate -c http://tengine.taobao.org/download/tengine-${NEW_tengine_ver}.tar.gz > /dev/null 2>&1
       if [ -e "tengine-${NEW_tengine_ver}.tar.gz" ]; then
         src_url=https://www.openssl.org/source/openssl-${openssl11_ver}.tar.gz && Download_src
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
+        src_url=${mirror_link}/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
         tar xzf openssl-${openssl11_ver}.tar.gz
         tar xzf pcre-${pcre_ver}.tar.gz
         echo "Download [${CMSG}tengine-${NEW_tengine_ver}.tar.gz${CEND}] successfully! "
@@ -156,7 +180,7 @@ Upgrade_OpenResty() {
       [ ! -e "openresty-${NEW_openresy_ver}.tar.gz" ] && wget --no-check-certificate -c https://openresty.org/download/openresty-${NEW_openresy_ver}.tar.gz > /dev/null 2>&1
       if [ -e "openresty-${NEW_openresy_ver}.tar.gz" ]; then
         src_url=https://www.openssl.org/source/openssl-${openssl11_ver}.tar.gz && Download_src
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
+        src_url=${mirror_link}/oneinstack/src/pcre-${pcre_ver}.tar.gz && Download_src
         tar xzf openssl-${openssl11_ver}.tar.gz
         tar xzf pcre-${pcre_ver}.tar.gz
         echo "Download [${CMSG}openresty-${NEW_openresy_ver}.tar.gz${CEND}] successfully! "
@@ -291,10 +315,10 @@ Upgrade_Tomcat() {
     if [ "`echo ${NEW_tomcat_ver} | awk -F. '{print $1}'`" == "${Tomcat_flag}" ]; then
       rm -f catalina-jmx-remote.jar
       echo "Download tomcat-${NEW_tomcat_ver}..."
-      src_url=http://mirrors.linuxeye.com/apache/tomcat/v${NEW_tomcat_ver}/apache-tomcat-${NEW_tomcat_ver}.tar.gz && Download_src
+      src_url=${mirror_link}/apache/tomcat/v${NEW_tomcat_ver}/apache-tomcat-${NEW_tomcat_ver}.tar.gz && Download_src
       [ ! -e "apache-tomcat-${NEW_tomcat_ver}.tar.gz" ] && wget --no-check-certificate -c https://archive.apache.org/dist/tomcat-${OLD_tomcat_ver}/v${NEW_tomcat_ver}/bin/apache-tomcat-${NEW_tomcat_ver}.tar.gz > /dev/null 2>&1
       if [ -e "${tomcat_install_dir}/lib/catalina-jmx-remote.jar" ]; then
-        src_url=http://mirrors.linuxeye.com/apache/tomcat/v${NEW_tomcat_ver}/catalina-jmx-remote.jar && Download_src
+        src_url=${mirror_link}/apache/tomcat/v${NEW_tomcat_ver}/catalina-jmx-remote.jar && Download_src
         [ ! -e "catalina-jmx-remote.jar" ] && wget --no-check-certificate -c https://archive.apache.org/dist/tomcat-${OLD_tomcat_ver}/v${NEW_tomcat_ver}/bin/extras/catalina-jmx-remote.jar > /dev/null 2>&1
       fi
       if [ -e "apache-tomcat-${NEW_tomcat_ver}.tar.gz" ]; then

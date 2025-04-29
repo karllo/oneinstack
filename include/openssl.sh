@@ -17,6 +17,8 @@ if openssl version | grep -Eqi 'OpenSSL 1.0.2*'; then
   php74_with_openssl="--with-openssl"
   php80_with_openssl="--with-openssl"
   php81_with_openssl="--with-openssl"
+  php82_with_openssl="--with-openssl"
+  php83_with_openssl="--with-openssl"
 
   php5_with_ssl="--with-ssl"
   php70_with_ssl="--with-ssl"
@@ -26,6 +28,8 @@ if openssl version | grep -Eqi 'OpenSSL 1.0.2*'; then
   php74_with_ssl="--with-ssl"
   php80_with_ssl="--with-ssl"
   php81_with_ssl="--with-ssl"
+  php82_with_ssl="--with-ssl"
+  php83_with_ssl="--with-ssl"
 
   php5_with_curl="--with-curl"
   php70_with_curl="--with-curl"
@@ -35,6 +39,8 @@ if openssl version | grep -Eqi 'OpenSSL 1.0.2*'; then
   php74_with_curl="--with-curl"
   php80_with_curl="--with-curl"
   php81_with_curl="--with-curl"
+  php82_with_curl="--with-curl"
+  php83_with_curl="--with-curl"
 elif openssl version | grep -Eqi 'OpenSSL 1.1.*'; then
   php5_with_openssl="--with-openssl=${openssl_install_dir}"
   php70_with_openssl="--with-openssl"
@@ -44,6 +50,8 @@ elif openssl version | grep -Eqi 'OpenSSL 1.1.*'; then
   php74_with_openssl="--with-openssl"
   php80_with_openssl="--with-openssl"
   php81_with_openssl="--with-openssl"
+  php82_with_openssl="--with-openssl"
+  php83_with_openssl="--with-openssl"
 
   php5_with_ssl="--with-ssl=${openssl_install_dir}"
   php70_with_ssl="--with-ssl"
@@ -53,6 +61,8 @@ elif openssl version | grep -Eqi 'OpenSSL 1.1.*'; then
   php74_with_ssl="--with-ssl"
   php80_with_ssl="--with-ssl"
   php81_with_ssl="--with-ssl"
+  php82_with_ssl="--with-ssl"
+  php83_with_ssl="--with-ssl"
 
   php5_with_curl="--with-curl=${curl_install_dir}"
   php70_with_curl="--with-curl"
@@ -62,35 +72,43 @@ elif openssl version | grep -Eqi 'OpenSSL 1.1.*'; then
   php74_with_curl="--with-curl"
   php80_with_curl="--with-curl"
   php81_with_curl="--with-curl"
+  php82_with_curl="--with-curl"
+  php83_with_curl="--with-curl"
   [[ ${php_option} =~ ^[1-4]$ ]] || [[ "${mphp_ver}" =~ ^5[3-6]$ ]] && with_old_openssl_flag=y
 elif openssl version | grep -Eqi 'OpenSSL 3.*'; then
   php5_with_openssl="--with-openssl=${openssl_install_dir}"
   php70_with_openssl="--with-openssl=${openssl_install_dir}"
-  php71_with_openssl="--with-openssl=${openssl_install_dir}"
-  php72_with_openssl="--with-openssl=${openssl_install_dir}"
-  php73_with_openssl="--with-openssl=${openssl_install_dir}"
-  php74_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
-  php80_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
+  php71_with_openssl="--with-openssl"
+  php72_with_openssl="--with-openssl"
+  php73_with_openssl="--with-openssl"
+  php74_with_openssl="--with-openssl"
+  php80_with_openssl="--with-openssl"
   php81_with_openssl="--with-openssl"
+  php82_with_openssl="--with-openssl"
+  php83_with_openssl="--with-openssl"
 
   php5_with_ssl="--with-ssl=${openssl_install_dir}"
   php70_with_ssl="--with-ssl=${openssl_install_dir}"
-  php71_with_ssl="--with-ssl=${openssl_install_dir}"
-  php72_with_ssl="--with-ssl=${openssl_install_dir}"
-  php73_with_ssl="--with-ssl=${openssl_install_dir}"
-  php74_with_ssl="--with-ssl=${openssl_install_dir}"
-  php80_with_ssl="--with-ssl=${openssl_install_dir}"
+  php71_with_ssl="--with-ssl"
+  php72_with_ssl="--with-ssl"
+  php73_with_ssl="--with-ssl"
+  php74_with_ssl="--with-ssl"
+  php80_with_ssl="--with-ssl"
   php81_with_ssl="--with-ssl"
+  php82_with_ssl="--with-ssl"
+  php83_with_ssl="--with-ssl"
 
   php5_with_curl="--with-curl=${curl_install_dir}"
   php70_with_curl="--with-curl=${curl_install_dir}"
-  php71_with_curl="--with-curl=${curl_install_dir}"
-  php72_with_curl="--with-curl=${curl_install_dir}"
-  php73_with_curl="--with-curl=${curl_install_dir}"
-  php74_with_curl="--with-curl=${curl_install_dir}"
-  php80_with_curl="--with-curl=${curl_install_dir}"
+  php71_with_curl="--with-curl"
+  php72_with_curl="--with-curl"
+  php73_with_curl="--with-curl"
+  php74_with_curl="--with-curl"
+  php80_with_curl="--with-curl"
   php81_with_curl="--with-curl"
-  [[ ${php_option} =~ ^[1-9]$|^10$ ]] || [[ "${mphp_ver}" =~ ^5[3-6]$|^7[0-4]$|^80$ ]] && with_old_openssl_flag=y
+  php82_with_curl="--with-curl"
+  php83_with_curl="--with-curl"
+  [[ ${php_option} =~ ^[1-5]$ ]] || [[ "${mphp_ver}" =~ ^5[3-6]$|^70$ ]] && with_old_openssl_flag=y
 else
   php5_with_openssl="--with-openssl=${openssl_install_dir}"
   php70_with_openssl="--with-openssl=${openssl_install_dir}"
@@ -100,6 +118,8 @@ else
   php74_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
   php80_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
   php81_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
+  php82_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
+  php83_with_openssl="--with-openssl=${openssl_install_dir} --with-openssl-dir=${openssl_install_dir}"
 
   php5_with_ssl="--with-ssl=${openssl_install_dir}"
   php70_with_ssl="--with-ssl=${openssl_install_dir}"
@@ -109,6 +129,8 @@ else
   php74_with_ssl="--with-ssl=${openssl_install_dir}"
   php80_with_ssl="--with-ssl=${openssl_install_dir}"
   php81_with_ssl="--with-ssl=${openssl_install_dir}"
+  php82_with_ssl="--with-ssl=${openssl_install_dir}"
+  php83_with_ssl="--with-ssl=${openssl_install_dir}"
 
   php5_with_curl="--with-curl=${curl_install_dir}"
   php70_with_curl="--with-curl=${curl_install_dir}"
@@ -118,6 +140,8 @@ else
   php74_with_curl="--with-curl=${curl_install_dir}"
   php80_with_curl="--with-curl=${curl_install_dir}"
   php81_with_curl="--with-curl=${curl_install_dir}"
+  php82_with_curl="--with-curl=${curl_install_dir}"
+  php83_with_curl="--with-curl=${curl_install_dir}"
   with_old_openssl_flag=y
 fi
 
@@ -137,7 +161,7 @@ Install_openSSL() {
         /bin/cp cacert.pem ${openssl_install_dir}/cert.pem
         rm -rf openssl-${openssl_ver}
       else
-        echo "${CFAILURE}openSSL install failed, Please contact the author! ${CEND}" && lsb_release -a
+        echo "${CFAILURE}openSSL install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
         kill -9 $$; exit 1;
       fi
       popd > /dev/null

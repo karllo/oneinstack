@@ -24,7 +24,11 @@ Install_pecl_ldap() {
       ln -s /usr/lib/${ARCH}-linux-gnu/liblber.so /usr/lib/
     fi
     ${php_install_dir}/bin/phpize
-    ./configure --with-php-config=${php_install_dir}/bin/php-config --with-ldap --with-libdir=lib64
+    if [ "${PM}" == 'yum' ]; then
+      ./configure --with-php-config=${php_install_dir}/bin/php-config --with-ldap --with-libdir=lib64
+    else
+      ./configure --with-php-config=${php_install_dir}/bin/php-config --with-ldap --with-libdir=lib/x86_64-linux-gnu
+    fi
     make -j ${THREAD} && make install
     popd > /dev/null
     if [ -f "${phpExtensionDir}/ldap.so" ]; then
@@ -32,7 +36,7 @@ Install_pecl_ldap() {
       echo "${CSUCCESS}PHP ldap module installed successfully! ${CEND}"
       rm -rf php-${PHP_detail_ver}
     else
-      echo "${CFAILURE}PHP ldap module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP ldap module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi

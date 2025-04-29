@@ -34,14 +34,15 @@ Upgrade_DB() {
 
   OLD_db_ver_tmp=`${db_install_dir}/bin/mysql -uroot -p${dbrootpwd} -e 'select version()\G;' | grep version | awk '{print $2}'`
   if [ -n "`${db_install_dir}/bin/mysql -V | grep -o MariaDB`" ]; then
-    [ "${IPADDR_COUNTRY}"x == "CN"x ] && DOWN_ADDR=https://mirrors.tuna.tsinghua.edu.cn/mariadb || DOWN_ADDR=https://downloads.mariadb.org/f
+    [ "${OUTIP_STATE}"x == "China"x ] && DOWN_ADDR=https://mirrors.tuna.tsinghua.edu.cn/mariadb || DOWN_ADDR=https://archive.mariadb.org
     DB=MariaDB
     OLD_db_ver=`echo ${OLD_db_ver_tmp} | awk -F'-' '{print $1}'`
   elif [ -n "`${db_install_dir}/bin/mysql -V | grep -o Percona`" ]; then
     DB=Percona
     OLD_db_ver=${OLD_db_ver_tmp}
   else
-    [ "${IPADDR_COUNTRY}"x == "CN"x ] && DOWN_ADDR=http://mirrors.ustc.edu.cn/mysql-ftp/Downloads || DOWN_ADDR=http://cdn.mysql.com/Downloads
+    #[ "${OUTIP_STATE}"x == "China"x ] && DOWN_ADDR=http://mirrors.ustc.edu.cn/mysql-ftp/Downloads || DOWN_ADDR=http://cdn.mysql.com/Downloads
+    DOWN_ADDR=http://cdn.mysql.com/Downloads
     DB=MySQL
     OLD_db_ver=${OLD_db_ver_tmp%%-log}
   fi
@@ -49,8 +50,8 @@ Upgrade_DB() {
   #backup
   echo
   echo "${CSUCCESS}Starting ${DB} backup${CEND}......"
-  ${db_install_dir}/bin/mysqldump -uroot -p${dbrootpwd} --opt --all-databases > DB_all_backup_$(date +"%Y%m%d_%H%M%S").sql
-  [ -f "DB_all_backup_$(date +"%Y%m%d_%H%M%S").sql" ] && echo "${DB} backup success, Backup file: ${MSG}`pwd`/DB_all_backup_$(date +"%Y%m%d_%H%M%S").sql${CEND}"
+  ${db_install_dir}/bin/mysqldump -uroot -p${dbrootpwd} --opt --all-databases > DB_all_backup_$(date +"%Y%m%d").sql
+  [ -f "DB_all_backup_$(date +"%Y%m%d").sql" ] && echo "${DB} backup success, Backup file: ${MSG}`pwd`/DB_all_backup_$(date +"%Y%m%d").sql${CEND}"
 
   #upgrade
   echo
@@ -68,7 +69,7 @@ Upgrade_DB() {
           perconaVerStr1=${NEW_db_ver}
         fi
         if [[ "`echo ${NEW_db_ver} | awk -F. '{print $1"."$2}'`" =~ ^8.0$ ]]; then
-           DB_filename=Percona-Server-${perconaVerStr1}-Linux.x86_64.glibc2.27
+           DB_filename=Percona-Server-${perconaVerStr1}-Linux.x86_64.glibc2.28
         elif [[ "`echo ${NEW_db_ver} | awk -F. '{print $1"."$2}'`" =~ ^5.7$ ]]; then
            DB_filename=Percona-Server-${perconaVerStr1}-Linux.x86_64.glibc2.17
         else
@@ -108,11 +109,11 @@ Upgrade_DB() {
       mv ${mariadb_install_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       mv ${mariadb_data_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       [ ! -d "${mariadb_install_dir}" ] && mkdir -p ${mariadb_install_dir}
-      mkdir -p ${mariadb_data_dir};chown mysql.mysql -R ${mariadb_data_dir}
+      mkdir -p ${mariadb_data_dir};chown mysql:mysql -R ${mariadb_data_dir}
       mv ${DB_filename}/* ${mariadb_install_dir}/
       sed -i 's@executing mysqld_safe@executing mysqld_safe\nexport LD_PRELOAD=/usr/local/lib/libjemalloc.so@' ${mariadb_install_dir}/bin/mysqld_safe
       ${mariadb_install_dir}/scripts/mysql_install_db --user=mysql --basedir=${mariadb_install_dir} --datadir=${mariadb_data_dir}
-      chown mysql.mysql -R ${mariadb_data_dir}
+      chown mysql:mysql -R ${mariadb_data_dir}
       service mysqld start
       ${mariadb_install_dir}/bin/mysql < DB_all_backup_$(date +"%Y%m%d").sql
       service mysqld restart
@@ -121,12 +122,12 @@ Upgrade_DB() {
       ${mariadb_install_dir}/bin/mysql_upgrade -uroot -p${dbrootpwd} >/dev/null 2>&1
       [ $? -eq 0 ] &&  echo "You have ${CMSG}successfully${CEND} upgrade from ${CMSG}${OLD_db_ver}${CEND} to ${CMSG}${NEW_db_ver}${CEND}"
     elif [ "${DB}" == 'Percona' ]; then
-      tar xzf ./${DB_filename}.tar.gz
+      tar xzf ${DB_filename}.tar.gz
       service mysqld stop
       mv ${percona_install_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       mv ${percona_data_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       [ ! -d "${percona_install_dir}" ] && mkdir -p ${percona_install_dir}
-      mkdir -p ${percona_data_dir};chown mysql.mysql -R ${percona_data_dir}
+      mkdir -p ${percona_data_dir};chown mysql:mysql -R ${percona_data_dir}
       mv ${DB_filename}/* ${percona_install_dir}/
       sed -i 's@executing mysqld_safe@executing mysqld_safe\nexport LD_PRELOAD=/usr/local/lib/libjemalloc.so@' ${percona_install_dir}/bin/mysqld_safe
       sed -i "s@/usr/local/${DB_filename}@${percona_install_dir}@g" ${percona_install_dir}/bin/mysqld_safe
@@ -135,7 +136,7 @@ Upgrade_DB() {
       else
         ${percona_install_dir}/bin/mysqld --initialize-insecure --user=mysql --basedir=${percona_install_dir} --datadir=${percona_data_dir}
       fi
-      chown mysql.mysql -R ${percona_data_dir}
+      chown mysql:mysql -R ${percona_data_dir}
       service mysqld start
       ${percona_install_dir}/bin/mysql < DB_all_backup_$(date +"%Y%m%d").sql
       service mysqld restart
@@ -153,7 +154,7 @@ Upgrade_DB() {
       mv ${mysql_install_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       mv ${mysql_data_dir}{,_old_`date +"%Y%m%d_%H%M%S"`}
       [ ! -d "${mysql_install_dir}" ] && mkdir -p ${mysql_install_dir}
-      mkdir -p ${mysql_data_dir};chown mysql.mysql -R ${mysql_data_dir}
+      mkdir -p ${mysql_data_dir};chown mysql:mysql -R ${mysql_data_dir}
       mv ${DB_filename}/* ${mysql_install_dir}/
       sed -i 's@executing mysqld_safe@executing mysqld_safe\nexport LD_PRELOAD=/usr/local/lib/libjemalloc.so@' ${mysql_install_dir}/bin/mysqld_safe
       sed -i "s@/usr/local/mysql@${mysql_install_dir}@g" ${mysql_install_dir}/bin/mysqld_safe
@@ -163,7 +164,7 @@ Upgrade_DB() {
         ${mysql_install_dir}/bin/mysqld --initialize-insecure --user=mysql --basedir=${mysql_install_dir} --datadir=${mysql_data_dir}
       fi
 
-      chown mysql.mysql -R ${mysql_data_dir}
+      chown mysql:mysql -R ${mysql_data_dir}
       [ -e "${mysql_install_dir}/my.cnf" ] && rm -rf ${mysql_install_dir}/my.cnf
       sed -i '/myisam_repair_threads/d' /etc/my.cnf
       service mysqld start

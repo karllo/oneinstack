@@ -14,7 +14,7 @@ Install_pecl_phalcon() {
     PHP_detail_ver=$(${php_install_dir}/bin/php-config --version)
     PHP_main_ver=${PHP_detail_ver%.*}
     phpExtensionDir=$(${php_install_dir}/bin/php-config --extension-dir)
-    if [[ "${PHP_main_ver}" =~ ^7.[2-4]$|^8.0$ ]]; then
+    if [[ "${PHP_main_ver}" =~ ^7.[2-4]$|^8.3$ ]]; then
       src_url=https://pecl.php.net/get/phalcon-${phalcon_ver}.tgz && Download_src
       tar xzf phalcon-${phalcon_ver}.tgz
       pushd phalcon-${phalcon_ver} > /dev/null
@@ -24,7 +24,7 @@ Install_pecl_phalcon() {
       make -j ${THREAD} && make install
       popd > /dev/null
     elif [[ "${PHP_main_ver}" =~ ^5.[5-6]$|^7.[0-1]$ ]]; then
-      src_url=http://mirrors.linuxeye.com/oneinstack/src/cphalcon-${phalcon_oldver}.tar.gz && Download_src
+      src_url=${mirror_link}/oneinstack/src/cphalcon-${phalcon_oldver}.tar.gz && Download_src
       tar xzf cphalcon-${phalcon_oldver}.tar.gz
       pushd cphalcon-${phalcon_oldver}/build > /dev/null
       echo "${CMSG}It may take a few minutes... ${CEND}"
@@ -38,7 +38,7 @@ Install_pecl_phalcon() {
       echo "${CSUCCESS}PHP phalcon module installed successfully! ${CEND}"
       rm -rf cphalcon-${phalcon_oldver} phalcon-${phalcon_ver}
     else
-      echo "${CFAILURE}PHP phalcon module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP phalcon module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi

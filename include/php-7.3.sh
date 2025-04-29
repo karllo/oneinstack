@@ -22,7 +22,8 @@ Install_PHP73() {
   if [ ! -e "${curl_install_dir}/lib/libcurl.la" ]; then
     tar xzf curl-${curl_ver}.tar.gz
     pushd curl-${curl_ver} > /dev/null
-    ./configure --prefix=${curl_install_dir} ${php73_with_ssl}
+    [ -e "/usr/local/lib/libnghttp2.so" ] && with_nghttp2='--with-nghttp2=/usr/local'
+    ./configure --prefix=${curl_install_dir} ${php73_with_ssl} ${with_nghttp2}
     make -j ${THREAD} && make install
     popd > /dev/null
     rm -rf curl-${curl_ver}
@@ -82,6 +83,10 @@ Install_PHP73() {
 
   tar xzf php-${php73_ver}.tar.gz
   pushd php-${php73_ver} > /dev/null
+  if [ -e ext/openssl/openssl.c ] && ! grep -Eqi '^#ifdef RSA_SSLV23_PADDING' ext/openssl/openssl.c; then
+    sed -i '/OPENSSL_SSLV23_PADDING/i#ifdef RSA_SSLV23_PADDING' ext/openssl/openssl.c
+    sed -i '/OPENSSL_SSLV23_PADDING/a#endif' ext/openssl/openssl.c
+  fi
   make clean
   [ ! -d "${php_install_dir}" ] && mkdir -p ${php_install_dir}
   [ "${phpcache_option}" == '1' ] && phpcache_arg='--enable-opcache' || phpcache_arg='--disable-opcache'

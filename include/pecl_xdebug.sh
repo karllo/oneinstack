@@ -29,7 +29,7 @@ Install_pecl_xdebug() {
       make -j ${THREAD} && make install
       popd > /dev/null
       if [ -f "${phpExtensionDir}/xdebug.so" ]; then
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/webgrind-master.zip && Download_src
+        src_url=${mirror_link}/oneinstack/src/webgrind-master.zip && Download_src
         unzip -q webgrind-master.zip
         /bin/mv webgrind-master ${wwwroot_dir}/default/webgrind
         [ ! -e /tmp/xdebug ] && { mkdir /tmp/xdebug; chown ${run_user}:${run_group} /tmp/xdebug; }
@@ -49,7 +49,7 @@ EOF
         echo; echo "Webgrind URL: ${CMSG}http://{Public IP}/webgrind ${CEND}"
         rm -rf xdebug-${xdebug_ver} xdebug-${xdebug_oldver}
       else
-        echo "${CFAILURE}PHP xdebug module install failed, Please contact the author! ${CEND}" && lsb_release -a
+        echo "${CFAILURE}PHP xdebug module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
       fi
     else
       echo "${CWARNING}Your php ${PHP_detail_ver} does not support xdebug! ${CEND}";

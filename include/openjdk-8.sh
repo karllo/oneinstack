@@ -13,7 +13,7 @@ Install_OpenJDK8() {
     yum -y install java-1.8.0-openjdk-devel
     JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
   elif [ "${Family}" == 'debian' ]; then
-    if [[ "${Debian_ver}" =~ ^10$|^11$ ]]; then
+    if [[ "${Debian_ver}" =~ ^10$|^11$|^12$ ]]; then
       #wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | apt-key add -
       cat ${oneinstack_dir}/src/adoptium.key | sudo apt-key add -
       apt-add-repository --yes https://mirrors.tuna.tsinghua.edu.cn/Adoptium/deb
@@ -36,7 +36,7 @@ EOF
     . /etc/profile.d/openjdk.sh
     echo "${CSUCCESS}OpenJDK8 installed successfully! ${CEND}"
   else
-    echo "${CFAILURE}OpenJDK8 install failed, Please contact the author! ${CEND}" && lsb_release -a
+    echo "${CFAILURE}OpenJDK8 install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     kill -9 $$; exit 1;
   fi
 }

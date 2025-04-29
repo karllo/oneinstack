@@ -22,7 +22,8 @@ Install_PHP74() {
   if [ ! -e "${curl_install_dir}/lib/libcurl.la" ]; then
     tar xzf curl-${curl_ver}.tar.gz
     pushd curl-${curl_ver} > /dev/null
-    ./configure --prefix=${curl_install_dir} ${php74_with_ssl}
+    [ -e "/usr/local/lib/libnghttp2.so" ] && with_nghttp2='--with-nghttp2=/usr/local'
+    ./configure --prefix=${curl_install_dir} ${php74_with_ssl} ${with_nghttp2}
     make -j ${THREAD} && make install
     popd > /dev/null
     rm -rf curl-${curl_ver}
@@ -91,6 +92,10 @@ Install_PHP74() {
 
   tar xzf php-${php74_ver}.tar.gz
   pushd php-${php74_ver} > /dev/null
+  if [ -e ext/openssl/openssl.c ] && ! grep -Eqi '^#ifdef RSA_SSLV23_PADDING' ext/openssl/openssl.c; then
+    sed -i '/OPENSSL_SSLV23_PADDING/i#ifdef RSA_SSLV23_PADDING' ext/openssl/openssl.c
+    sed -i '/OPENSSL_SSLV23_PADDING/a#endif' ext/openssl/openssl.c
+  fi
   make clean
   export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/:$PKG_CONFIG_PATH
   [ ! -d "${php_install_dir}" ] && mkdir -p ${php_install_dir}

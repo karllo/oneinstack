@@ -30,7 +30,7 @@ Install_memcached_server() {
     rm -rf memcached-${memcached_ver}
   else
     rm -rf ${memcached_install_dir}
-    echo "${CFAILURE}memcached-server install failed, Please contact the author! ${CEND}" && lsb_release -a
+    echo "${CFAILURE}memcached-server install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     kill -9 $$; exit 1;
   fi
   popd > /dev/null
@@ -43,6 +43,9 @@ Install_pecl_memcache() {
     PHP_detail_ver=$(${php_install_dir}/bin/php-config --version)
     PHP_main_ver=${PHP_detail_ver%.*}
     if [ "$(${php_install_dir}/bin/php-config --version | awk -F. '{print $1}')" == '5' ]; then
+      tar xzf memcache-3.0.8.tgz
+      pushd memcache-3.0.8 > /dev/null
+    elif [ "$(${php_install_dir}/bin/php-config --version | awk -F. '{print $1}')" == '7' ]; then
       tar xzf memcache-${pecl_memcache_oldver}.tgz
       pushd memcache-${pecl_memcache_oldver} > /dev/null
     else
@@ -57,9 +60,9 @@ Install_pecl_memcache() {
     if [ -f "${phpExtensionDir}/memcache.so" ]; then
       echo "extension=memcache.so" > ${php_install_dir}/etc/php.d/05-memcache.ini
       echo "${CSUCCESS}PHP memcache module installed successfully! ${CEND}"
-      rm -rf memcache-${pecl_memcache_ver} memcache-${pecl_memcache_oldver}
+      rm -rf memcache-${pecl_memcache_ver} memcache-${pecl_memcache_oldver} memcache-3.0.8
     else
-      echo "${CFAILURE}PHP memcache module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP memcache module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi
@@ -99,7 +102,7 @@ EOF
       echo "${CSUCCESS}PHP memcached module installed successfully! ${CEND}"
       rm -rf memcached-${pecl_memcached_oldver} memcached-${pecl_memcached_ver}
     else
-      echo "${CFAILURE}PHP memcached module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP memcached module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi

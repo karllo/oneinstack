@@ -26,6 +26,7 @@ pushd ${oneinstack_dir} > /dev/null
 . ./include/check_dir.sh
 . ./include/check_os.sh
 . ./include/get_char.sh
+. ./include/openssl.sh
 
 Show_Help() {
   echo
@@ -176,17 +177,32 @@ If you enter '.', the field will be left blank.
     openssl req -utf8 -new -newkey rsa:2048 -sha256 -nodes -out ${PATH_SSL}/${domain}.csr -keyout ${PATH_SSL}/${domain}.key -subj "/C=${SELFSIGNEDSSL_C}/ST=${SELFSIGNEDSSL_ST}/L=${SELFSIGNEDSSL_L}/O=${SELFSIGNEDSSL_O}/OU=${SELFSIGNEDSSL_OU}/CN=${domain}" > /dev/null 2>&1
     openssl x509 -req -days 36500 -sha256 -in ${PATH_SSL}/${domain}.csr -signkey ${PATH_SSL}/${domain}.key -out ${PATH_SSL}/${domain}.crt > /dev/null 2>&1
   elif [ "${Domian_Mode}" == '3' -o "${dnsapi_flag}" == 'y' ]; then
-    if [ ! -e ~/.acme.sh/ca/acme.zerossl.com/account.key ]; then
       while :; do echo
-        read -e -p "Please enter your email: " Email
+        echo 'Please select domain cert key length.'
+        echo "${CMSG}Enter one of 2048, 3072, 4096, 8192 will issue a RSA cert.${CEND}"
+        echo "${CMSG}Enter one of ec-256, ec-384, ec-521 will issue a ECC cert.${CEND}"
         echo
-        if [[ $Email =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,4}$ ]]; then
+        read -e -p "Please enter your cert key length (default 2048): " CERT_KEYLENGTH
+        if [ "${CERT_KEYLENGTH}" == "" ]; then
+          CERT_KEYLENGTH="2048"
+          break
+        elif [[ "${CERT_KEYLENGTH}" =~ ^2048$|^3072$|^4096$|^8192$|^ec-256$|^ec-384$|^ec-521$ ]]; then
           break
         else
           echo "${CWARNING}input error!${CEND}"
         fi
       done
-      ~/.acme.sh/acme.sh --register-account -m $Email
+    if [ ! -e ~/.acme.sh/ca/acme.zerossl.com/v2/DV90/account.key ]; then
+      while :; do echo
+        read -e -p "Please enter your email: " EMAIL
+        echo
+        if [[ "${EMAIL}" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._-]+\.[A-Za-z]{2,9}$ ]]; then
+          break
+        else
+          echo "${CWARNING}input error!${CEND}"
+        fi
+      done
+      ~/.acme.sh/acme.sh --register-account -m ${EMAIL}
     fi
     if [ "${moredomain}" == "*.${domain}" -o "${dnsapi_flag}" == 'y' ]; then
       while :; do echo
@@ -212,11 +228,15 @@ If you enter '.', the field will be left blank.
         fi
       done
       [ "${moredomainame_flag}" == 'y' ] && moredomainame_D="$(for D in ${moredomainame}; do echo -d ${D}; done)"
-      ~/.acme.sh/acme.sh --force --listen-v4 --issue --dns dns_${DNS_PRO} -d ${domain} ${moredomainame_D}
+      ~/.acme.sh/acme.sh --force --issue -k ${CERT_KEYLENGTH} --dns dns_${DNS_PRO} -d ${domain} ${moredomainame_D}
     else
       if [ "${nginx_ssl_flag}" == 'y' ]; then
         [ ! -d ${web_install_dir}/conf/vhost ] && mkdir ${web_install_dir}/conf/vhost
-        echo "server {  server_name ${domain}${moredomainame};  root ${vhostdir};  access_log off; }" > ${web_install_dir}/conf/vhost/${domain}.conf
+        if [ -n "`ifconfig | grep inet6`" ]; then
+          echo "server {  listen 80;  listen [::]:80;  server_name ${domain}${moredomainame};  root ${vhostdir};  access_log off; }" > ${web_install_dir}/conf/vhost/${domain}.conf
+        else
+          echo "server {  listen 80;  server_name ${domain}${moredomainame};  root ${vhostdir};  access_log off; }" > ${web_install_dir}/conf/vhost/${domain}.conf
+        fi
         ${web_install_dir}/sbin/nginx -s reload
       fi
       if [ "${apache_ssl_flag}" == 'y' ]; then
@@ -249,9 +269,8 @@ EOF
       done
       rm -f ${vhostdir}/${auth_file}
       [ "${moredomainame_flag}" == 'y' ] && moredomainame_D="$(for D in ${moredomainame}; do echo -d ${D}; done)"
-      ~/.acme.sh/acme.sh --force --listen-v4 --issue -d ${domain} ${moredomainame_D} -w ${vhostdir}
+      ~/.acme.sh/acme.sh --force --issue -k ${CERT_KEYLENGTH} -w ${vhostdir} -d ${domain} ${moredomainame_D}
     fi
-    if [ -s ~/.acme.sh/${domain}/fullchain.cer ]; then
       [ -e "${PATH_SSL}/${domain}.crt" ] && rm -f ${PATH_SSL}/${domain}.{crt,key}
       Nginx_cmd="/bin/systemctl restart nginx"
       Apache_cmd="${apache_install_dir}/bin/apachectl -k graceful"
@@ -262,7 +281,10 @@ EOF
       elif [ ! -e "${web_install_dir}/sbin/nginx" -a -e "${apache_install_dir}/bin/httpd" ]; then
         Command="${Apache_cmd}"
       fi
+    if [ -s ~/.acme.sh/${domain}/fullchain.cer ] && [[ "${CERT_KEYLENGTH}" =~ ^2048$|^3072$|^4096$|^8192$ ]]; then
       ~/.acme.sh/acme.sh --force --install-cert -d ${domain} --fullchain-file ${PATH_SSL}/${domain}.crt --key-file ${PATH_SSL}/${domain}.key --reloadcmd "${Command}" > /dev/null
+    elif [ -s ~/.acme.sh/${domain}_ecc/fullchain.cer ] && [[ "${CERT_KEYLENGTH}" =~ ^ec-256$|^ec-384$|^ec-521$ ]]; then
+      ~/.acme.sh/acme.sh --force --install-cert --ecc -d ${domain} --fullchain-file ${PATH_SSL}/${domain}.crt --key-file ${PATH_SSL}/${domain}.key --reloadcmd "${Command}" > /dev/null
     else
       echo "${CFAILURE}Error: Create Let's Encrypt SSL Certificate failed! ${CEND}"
       [ -e "${web_install_dir}/conf/vhost/${domain}.conf" ] && rm -f ${web_install_dir}/conf/vhost/${domain}.conf
@@ -332,11 +354,13 @@ What Are You Doing?
         [ -e "/dev/shm/php73-cgi.sock" ] && echo -e "\t${CMSG} 8${CEND}. PHP 7.3"
         [ -e "/dev/shm/php74-cgi.sock" ] && echo -e "\t${CMSG} 9${CEND}. PHP 7.4"
         [ -e "/dev/shm/php80-cgi.sock" ] && echo -e "\t${CMSG}10${CEND}. PHP 8.0"
-        [ -e "/dev/shm/php81-cgi.sock" ] && echo -e "\t${CMSG}10${CEND}. PHP 8.1"
+        [ -e "/dev/shm/php81-cgi.sock" ] && echo -e "\t${CMSG}11${CEND}. PHP 8.1"
+        [ -e "/dev/shm/php82-cgi.sock" ] && echo -e "\t${CMSG}12${CEND}. PHP 8.2"
+        [ -e "/dev/shm/php83-cgi.sock" ] && echo -e "\t${CMSG}13${CEND}. PHP 8.3"
         read -e -p "Please input a number:(Default 0 press Enter) " php_option
         php_option=${php_option:-0}
-        if [[ ! ${php_option} =~ ^[0-9]$|^1[0-1]$ ]]; then
-          echo "${CWARNING}input error! Please only input number 0~11${CEND}"
+        if [[ ! ${php_option} =~ ^[0-9]$|^1[0-2]$ ]]; then
+          echo "${CWARNING}input error! Please only input number 1~12${CEND}"
         else
           break
         fi
@@ -353,6 +377,8 @@ What Are You Doing?
     [ "${php_option}" == '9' ] && mphp_ver=74
     [ "${php_option}" == '10' ] && mphp_ver=80
     [ "${php_option}" == '11' ] && mphp_ver=81
+    [ "${php_option}" == '12' ] && mphp_ver=82
+    [ "${php_option}" == '13' ] && mphp_ver=83
     [ ! -e "/dev/shm/php${mphp_ver}-cgi.sock" ] && unset mphp_ver
   fi
 
@@ -367,7 +393,7 @@ What Are You Doing?
 
   if [ "${Domian_Mode}" == '3' -o "${dnsapi_flag}" == 'y' ] && [ ! -e ~/.acme.sh/acme.sh ]; then
     pushd ${oneinstack_dir}/src > /dev/null
-    [ ! -e acme.sh-master.tar.gz ] && wget -qc http://mirrors.linuxeye.com/oneinstack/src/acme.sh-master.tar.gz
+    [ ! -e acme.sh-master.tar.gz ] && wget -qc ${mirror_link}/oneinstack/src/acme.sh-master.tar.gz
     tar xzf acme.sh-master.tar.gz
     pushd acme.sh-master > /dev/null
     ./acme.sh --install > /dev/null 2>&1
@@ -475,15 +501,29 @@ What Are You Doing?
     done
 
     if [[ "$(${web_install_dir}/sbin/nginx -V 2>&1 | grep -Eo 'with-http_v2_module')" = 'with-http_v2_module' ]]; then
-      LISTENOPT="443 ssl http2"
+        # 获取nginx版本号
+        nginx_version=$(${web_install_dir}/sbin/nginx -v 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        # 转换版本号为可比较的数字
+        version_number=$(echo $nginx_version | awk -F. '{ printf("%d%02d%02d\n", $1,$2,$3); }')
+        
+        if [ "$version_number" -lt 12501 ]; then
+          # nginx版本小于1.25.1
+          LISTENOPT="443 ssl http2"
+          HTTP2OPT=""
+        else
+          # nginx版本大于等于1.25.1
+          LISTENOPT="443 ssl"
+          HTTP2OPT="http2 on"
+        fi
     else
       LISTENOPT="443 ssl spdy"
+      HTTP2OPT=""
     fi
     Create_SSL
     if [ -n "`ifconfig | grep inet6`" ]; then
-      Nginx_conf=$(echo -e "listen 80;\n  listen [::]:80;\n  listen ${LISTENOPT};\n  listen [::]:${LISTENOPT};\n  ssl_certificate ${PATH_SSL}/${domain}.crt;\n  ssl_certificate_key ${PATH_SSL}/${domain}.key;\n  ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;\n  ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;\n  ssl_prefer_server_ciphers on;\n  ssl_session_timeout 10m;\n  ssl_session_cache builtin:1000 shared:SSL:10m;\n  ssl_buffer_size 1400;\n  add_header Strict-Transport-Security max-age=15768000;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n")
+      Nginx_conf=$(echo -e "listen 80;\n  listen [::]:80;\n  listen ${LISTENOPT};\n  listen [::]:${LISTENOPT};\n  ${HTTP2OPT};\n  ssl_certificate ${PATH_SSL}/${domain}.crt;\n  ssl_certificate_key ${PATH_SSL}/${domain}.key;\n  ssl_protocols TLSv1.2 TLSv1.3;\n  ssl_ecdh_curve X25519:prime256v1:secp384r1:secp521r1;\n  ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256;\n  ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;\n  ssl_conf_command Options PrioritizeChaCha;\n  ssl_prefer_server_ciphers on;\n  ssl_session_timeout 10m;\n  ssl_session_cache shared:SSL:10m;\n  ssl_buffer_size 2k;\n  add_header Strict-Transport-Security max-age=15768000;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n")
     else
-      Nginx_conf=$(echo -e "listen 80;\n  listen ${LISTENOPT};\n  ssl_certificate ${PATH_SSL}/${domain}.crt;\n  ssl_certificate_key ${PATH_SSL}/${domain}.key;\n  ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;\n  ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;\n  ssl_prefer_server_ciphers on;\n  ssl_session_timeout 10m;\n  ssl_session_cache builtin:1000 shared:SSL:10m;\n  ssl_buffer_size 1400;\n  add_header Strict-Transport-Security max-age=15768000;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n")
+      Nginx_conf=$(echo -e "listen 80;\n  listen ${LISTENOPT};\n  ${HTTP2OPT};\n  ssl_certificate ${PATH_SSL}/${domain}.crt;\n  ssl_certificate_key ${PATH_SSL}/${domain}.key;\n  ssl_protocols TLSv1.2 TLSv1.3;\n  ssl_ecdh_curve X25519:prime256v1:secp384r1:secp521r1;\n  ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256;\n  ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;\n  ssl_conf_command Options PrioritizeChaCha;\n  ssl_prefer_server_ciphers on;\n  ssl_session_timeout 10m;\n  ssl_session_cache shared:SSL:10m;\n  ssl_buffer_size 2k;\n  add_header Strict-Transport-Security max-age=15768000;\n  ssl_stapling on;\n  ssl_stapling_verify on;\n")
     fi
     Apache_SSL=$(echo -e "SSLEngine on\n  SSLCertificateFile \"${PATH_SSL}/${domain}.crt\"\n  SSLCertificateKeyFile \"${PATH_SSL}/${domain}.key\"")
   elif [ "${apache_ssl_flag}" == 'y' ]; then
@@ -733,12 +773,15 @@ EOF
       sed -i "s@^  server_name.*;@&\n  ssl_stapling_verify on;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  ssl_stapling on;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  add_header Strict-Transport-Security max-age=15768000;@" ${web_install_dir}/conf/vhost/${domain}.conf
-      sed -i "s@^  server_name.*;@&\n  ssl_buffer_size 1400;@" ${web_install_dir}/conf/vhost/${domain}.conf
-      sed -i "s@^  server_name.*;@&\n  ssl_session_cache builtin:1000 shared:SSL:10m;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_buffer_size 2k;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_session_cache shared:SSL:10m;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  ssl_session_timeout 10m;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  ssl_prefer_server_ciphers on;@" ${web_install_dir}/conf/vhost/${domain}.conf
-      sed -i "s@^  server_name.*;@&\n  ssl_ciphers TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:\!MD5;@" ${web_install_dir}/conf/vhost/${domain}.conf
-      sed -i "s@^  server_name.*;@&\n  ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_conf_command Options PrioritizeChaCha;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_conf_command Ciphersuites TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_ecdh_curve X25519:prime256v1:secp384r1:secp521r1;@" ${web_install_dir}/conf/vhost/${domain}.conf
+      sed -i "s@^  server_name.*;@&\n  ssl_protocols TLSv1.2 TLSv1.3;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  ssl_certificate_key ${PATH_SSL}/${domain}.key;@" ${web_install_dir}/conf/vhost/${domain}.conf
       sed -i "s@^  server_name.*;@&\n  ssl_certificate ${PATH_SSL}/${domain}.crt;@" ${web_install_dir}/conf/vhost/${domain}.conf
     fi
@@ -1122,6 +1165,7 @@ Del_NGX_Vhost() {
               fi
               echo
               [ -d ~/.acme.sh/${domain} ] && ~/.acme.sh/acme.sh --force --remove -d ${domain} > /dev/null 2>&1
+              [ -d ~/.acme.sh/${domain}_ecc ] && ~/.acme.sh/acme.sh --force --remove --ecc -d ${domain} > /dev/null 2>&1
               echo "${CMSG}Domain: ${domain} has been deleted.${CEND}"
               echo
             else
@@ -1174,6 +1218,7 @@ Del_Apache_Vhost() {
                 rm -rf ${Directory}
               fi
               [ -d ~/.acme.sh/${domain} ] && ~/.acme.sh/acme.sh --force --remove -d ${domain} > /dev/null 2>&1
+              [ -d ~/.acme.sh/${domain}_ecc ] && ~/.acme.sh/acme.sh --force --remove --ecc -d ${domain} > /dev/null 2>&1
               echo "${CSUCCESS}Domain: ${domain} has been deleted.${CEND}"
             else
               echo "${CWARNING}Virtualhost: ${domain} was not exist! ${CEND}"
@@ -1257,6 +1302,7 @@ List_Vhost() {
 }
 
 if [ ${ARG_NUM} == 0 ]; then
+  Install_openSSL | tee -a ${oneinstack_dir}/install.log
   Add_Vhost
 else
   [ "${add_flag}" == 'y' -o "${proxy_flag}" == 'y' -o "${sslquiet_flag}" == 'y' ] && Add_Vhost

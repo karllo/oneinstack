@@ -22,7 +22,8 @@ Install_PHP54() {
   if [ ! -e "${curl_install_dir}/lib/libcurl.la" ]; then
     tar xzf curl-${curl_ver}.tar.gz
     pushd curl-${curl_ver} > /dev/null
-    ./configure --prefix=${curl_install_dir} ${php5_with_ssl}
+    [ -e "/usr/local/lib/libnghttp2.so" ] && with_nghttp2='--with-nghttp2=/usr/local'
+    ./configure --prefix=${curl_install_dir} ${php5_with_ssl} ${with_nghttp2}
     make -j ${THREAD} && make install
     popd > /dev/null
     rm -rf curl-${curl_ver}
@@ -91,7 +92,7 @@ Install_PHP54() {
   pushd php-${php54_ver} > /dev/null
   make clean
   [ ! -d "${php_install_dir}" ] && mkdir -p ${php_install_dir}
-  { [ ${Debian_ver} -ge 10 >/dev/null 2>&1 ] || [ ${Ubuntu_ver} -ge 19 >/dev/null 2>&1 ]; } || intl_modules_options='--enable-intl'
+  { [ ${RHEL_ver} -ge 9 >/dev/null 2>&1 ] || [ ${Debian_ver} -ge 10 >/dev/null 2>&1 ] || [ ${Ubuntu_ver} -ge 19 >/dev/null 2>&1 ]; } || intl_modules_options='--enable-intl'
   if [ "${apache_mode_option}" == '2' ]; then
     ./configure --prefix=${php_install_dir} --with-config-file-path=${php_install_dir}/etc \
     --with-config-file-scan-dir=${php_install_dir}/etc/php.d \

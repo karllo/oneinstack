@@ -18,7 +18,7 @@ Install_pecl_fileinfo() {
     pushd php-${PHP_detail_ver}/ext/fileinfo > /dev/null
     ${php_install_dir}/bin/phpize
     ./configure --with-php-config=${php_install_dir}/bin/php-config
-    [[ "${php_option}" =~ ^1[0-1]$ ]] && sed -i 's@^CFLAGS = -g -O2@CFLAGS = -std=c99 -g -O2@' Makefile
+    sed -i 's@^CFLAGS =.*@CFLAGS = -std=c99 -g@' Makefile
     make -j ${THREAD} && make install
     popd > /dev/null
     if [ -f "${phpExtensionDir}/fileinfo.so" ]; then
@@ -26,7 +26,7 @@ Install_pecl_fileinfo() {
       echo "${CSUCCESS}PHP fileinfo module installed successfully! ${CEND}"
       rm -rf php-${PHP_detail_ver}
     else
-      echo "${CFAILURE}PHP fileinfo module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP fileinfo module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi

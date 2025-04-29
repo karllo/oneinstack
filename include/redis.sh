@@ -40,7 +40,7 @@ Install_redis_server() {
     systemctl start redis-server
   else
     rm -rf ${redis_install_dir}
-    echo "${CFAILURE}Redis-server install failed, Please contact the author! ${CEND}" && lsb_release -a
+    echo "${CFAILURE}Redis-server install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     kill -9 $$; exit 1;
   fi
   popd > /dev/null
@@ -51,8 +51,11 @@ Install_pecl_redis() {
     pushd ${oneinstack_dir}/src > /dev/null
     phpExtensionDir=`${php_install_dir}/bin/php-config --extension-dir`
     if [ "$(${php_install_dir}/bin/php-config --version | awk -F. '{print $1}')" == '5' ]; then
-      tar xzf redis-${pecl_redis_oldver}.tgz
-      pushd redis-${pecl_redis_oldver} > /dev/null
+      tar xzf redis-4.3.0.tgz
+      pushd redis-4.3.0 > /dev/null
+    elif [[ "$(${php_install_dir}/bin/php-config --version | awk -F. '{print $1$2}')" =~ ^7[0-1]$ ]]; then
+      tar xzf redis-5.3.7.tgz
+      pushd redis-5.3.7 > /dev/null
     else
       tar xzf redis-${pecl_redis_ver}.tgz
       pushd redis-${pecl_redis_ver} > /dev/null
@@ -64,9 +67,9 @@ Install_pecl_redis() {
     if [ -f "${phpExtensionDir}/redis.so" ]; then
       echo 'extension=redis.so' > ${php_install_dir}/etc/php.d/05-redis.ini
       echo "${CSUCCESS}PHP Redis module installed successfully! ${CEND}"
-      rm -rf redis-${pecl_redis_ver} redis-${pecl_redis_oldver}
+      rm -rf redis-${pecl_redis_ver} redis-4.3.0 redis-5.3.7
     else
-      echo "${CFAILURE}PHP Redis module install failed, Please contact the author! ${CEND}" && lsb_release -a
+      echo "${CFAILURE}PHP Redis module install failed, Please contact the author! ${CEND}" && grep -Ew 'NAME|ID|ID_LIKE|VERSION_ID|PRETTY_NAME' /etc/os-release
     fi
     popd > /dev/null
   fi

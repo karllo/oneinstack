@@ -11,17 +11,17 @@
 DEMO() {
   pushd ${oneinstack_dir}/src > /dev/null
   if [ ! -e ${wwwroot_dir}/default/index.html ]; then 
-    [ "${IPADDR_COUNTRY}"x == "CN"x ] && /bin/cp ${oneinstack_dir}/config/index_cn.html ${wwwroot_dir}/default/index.html || /bin/cp ${oneinstack_dir}/config/index.html ${wwwroot_dir}/default
+    [ "${OUTIP_STATE}"x == "China"x ] && /bin/cp ${oneinstack_dir}/config/index_cn.html ${wwwroot_dir}/default/index.html || /bin/cp ${oneinstack_dir}/config/index.html ${wwwroot_dir}/default
   fi
 
   if [ -e "${php_install_dir}/bin/php" ]; then
-    src_url=http://mirrors.linuxeye.com/oneinstack/src/xprober.php && Download_src
+    src_url=${mirror_link}/oneinstack/src/xprober.php && Download_src
     /bin/cp xprober.php ${wwwroot_dir}/default
 
     echo "<?php phpinfo() ?>" > ${wwwroot_dir}/default/phpinfo.php
     case "${phpcache_option}" in
       1)
-        src_url=http://mirrors.linuxeye.com/oneinstack/src/ocp.php && Download_src
+        src_url=${mirror_link}/oneinstack/src/ocp.php && Download_src
         /bin/cp ocp.php ${wwwroot_dir}/default
         ;;
       2)

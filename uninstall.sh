@@ -33,12 +33,12 @@ Show_Help() {
   --help, -h                    Show this help message, More: https://oneinstack.com
   --quiet, -q                   quiet operation
   --all                         Uninstall All
-  --web                         Uninstall Nginx/Tengine/OpenResty/Apache/Tomcat
+  --web                         Uninstall Nginx/Tengine/OpenResty/Apache/Tomcat/Caddy
   --mysql                       Uninstall MySQL/MariaDB/Percona
   --postgresql                  Uninstall PostgreSQL
   --mongodb                     Uninstall MongoDB
   --php                         Uninstall PHP (PATH: ${php_install_dir})
-  --mphp_ver [53~81]            Uninstall another PHP version (PATH: ${php_install_dir}\${mphp_ver})
+  --mphp_ver [53~83]            Uninstall another PHP version (PATH: ${php_install_dir}\${mphp_ver})
   --allphp                      Uninstall all PHP
   --phpcache                    Uninstall PHP opcode cache
   --php_extensions [ext name]   Uninstall PHP extensions, include zendguardloader,ioncube,
@@ -48,13 +48,12 @@ Show_Help() {
   --redis                       Uninstall Redis-server
   --memcached                   Uninstall Memcached-server
   --phpmyadmin                  Uninstall phpMyAdmin
-  --python                      Uninstall Python (PATH: ${python_install_dir})
-  --node                        Uninstall Nodejs (PATH: ${nodejs_install_dir})
+  --nodejs                      Uninstall Nodejs (PATH: ${nodejs_install_dir})
   "
 }
 
 ARG_NUM=$#
-TEMP=`getopt -o hvVq --long help,version,quiet,all,web,mysql,postgresql,mongodb,php,mphp_ver:,allphp,phpcache,php_extensions:,pureftpd,redis,memcached,phpmyadmin,python,node -- "$@" 2>/dev/null`
+TEMP=`getopt -o hvVq --long help,version,quiet,all,web,mysql,postgresql,mongodb,php,mphp_ver:,allphp,phpcache,php_extensions:,pureftpd,redis,memcached,phpmyadmin,nodejs -- "$@" 2>/dev/null`
 [ $? != 0 ] && echo "${CWARNING}ERROR: unknown argument! ${CEND}" && Show_Help && exit 1
 eval set -- "${TEMP}"
 while :; do
@@ -80,7 +79,6 @@ while :; do
       redis_flag=y
       memcached_flag=y
       phpmyadmin_flag=y
-      python_flag=y
       shift 1
       ;;
     --web)
@@ -129,7 +127,7 @@ while :; do
       [ -n "`echo ${php_extensions} | grep -w swoole`" ] && pecl_swoole=1
       [ -n "`echo ${php_extensions} | grep -w xdebug`" ] && pecl_xdebug=1
       ;;
-    --node)
+    --nodejs)
       nodejs_flag=y; shift 1
       ;;
     --pureftpd)
@@ -143,9 +141,6 @@ while :; do
       ;;
     --phpmyadmin)
       phpmyadmin_flag=y; shift 1
-      ;;
-    --python)
-      python_flag=y; shift 1
       ;;
     --)
       shift
@@ -182,6 +177,9 @@ Print_web() {
   [ -e "/lib/systemd/system/nginx.service" ] && echo /lib/systemd/system/nginx.service
   [ -e "/etc/logrotate.d/nginx" ] && echo /etc/logrotate.d/nginx
 
+  [ -d "${caddy_install_dir}" ] && echo ${caddy_install_dir}
+  [ -e "/lib/systemd/system/caddy.service" ] && echo /lib/systemd/system/caddy.service
+
   [ -d "${apache_install_dir}" ] && echo ${apache_install_dir}
   [ -e "/lib/systemd/system/httpd.service" ] && echo /lib/systemd/system/httpd.service
   [ -e "/etc/init.d/httpd" ] && echo /etc/init.d/httpd
@@ -198,7 +196,9 @@ Uninstall_Web() {
   [ -d "${nginx_install_dir}" ] && { killall nginx > /dev/null 2>&1; rm -rf ${nginx_install_dir} /etc/init.d/nginx /etc/logrotate.d/nginx; sed -i "s@${nginx_install_dir}/sbin:@@" /etc/profile; echo "${CMSG}Nginx uninstall completed! ${CEND}"; }
   [ -d "${tengine_install_dir}" ] && { killall nginx > /dev/null 2>&1; rm -rf ${tengine_install_dir} /etc/init.d/nginx /etc/logrotate.d/nginx; sed -i "s@${tengine_install_dir}/sbin:@@" /etc/profile; echo "${CMSG}Tengine uninstall completed! ${CEND}"; }
   [ -d "${openresty_install_dir}" ] && { killall nginx > /dev/null 2>&1; rm -rf ${openresty_install_dir} /etc/init.d/nginx /etc/logrotate.d/nginx; sed -i "s@${openresty_install_dir}/nginx/sbin:@@" /etc/profile; echo "${CMSG}OpenResty uninstall completed! ${CEND}"; }
+  [ -d "${caddy_install_dir}" ] && { killall caddy > /dev/null 2>&1; rm -rf ${caddy_install_dir} /etc/init.d/caddy /etc/logrotate.d/caddy; sed -i "s@${caddy_install_dir}/bin:@@" /etc/profile; echo "${CMSG}Caddy uninstall completed! ${CEND}"; }
   [ -e "/lib/systemd/system/nginx.service" ] && { systemctl disable nginx > /dev/null 2>&1; rm -f /lib/systemd/system/nginx.service; }
+  [ -e "/lib/systemd/system/caddy.service" ] && { systemctl disable caddy > /dev/null 2>&1; rm -f /lib/systemd/system/caddy.service; }
   [ -d "${apache_install_dir}" ] && { service httpd stop > /dev/null 2>&1; rm -rf ${apache_install_dir} /etc/init.d/httpd /etc/logrotate.d/apache; sed -i "s@${apache_install_dir}/bin:@@" /etc/profile; echo "${CMSG}Apache uninstall completed! ${CEND}"; }
   [ -e "/lib/systemd/system/httpd.service" ] && { systemctl disable httpd > /dev/null 2>&1; rm -f /lib/systemd/system/httpd.service; }
   [ -d "${tomcat_install_dir}" ] && { killall java > /dev/null 2>&1; rm -rf ${tomcat_install_dir} /etc/init.d/tomcat /etc/logrotate.d/tomcat; echo "${CMSG}Tomcat uninstall completed! ${CEND}"; }
@@ -319,7 +319,7 @@ Uninstall_ALLPHP() {
   [ -e "${apache_install_dir}/conf/httpd.conf" ] && [ -n "`grep libphp ${apache_install_dir}/conf/httpd.conf`" ] && sed -i '/libphp/d' ${apache_install_dir}/conf/httpd.conf
   [ -e "${php_install_dir}" ] && { rm -rf ${php_install_dir}; echo "${CMSG}PHP uninstall completed! ${CEND}"; }
   sed -i "s@${php_install_dir}/bin:@@" /etc/profile
-  for php_ver in 53 54 55 56 70 71 72 73 74 80 81; do
+  for php_ver in 53 54 55 56 70 71 72 73 74 80 81 82 83; do
     [ -e "/etc/init.d/php${php_ver}-fpm" ] && { service php${php_ver}-fpm stop > /dev/null 2>&1; rm -f /etc/init.d/php${php_ver}-fpm; }
     [ -e "/lib/systemd/system/php${php_ver}-fpm.service" ] && { systemctl stop php${php_ver}-fpm > /dev/null 2>&1; systemctl disable php${php_ver}-fpm > /dev/null 2>&1; rm -f /lib/systemd/system/php${php_ver}-fpm.service; }
     [ -e "${php_install_dir}${php_ver}" ] && { rm -rf ${php_install_dir}${php_ver}; echo "${CMSG}PHP${php_ver} uninstall completed! ${CEND}"; }
@@ -563,10 +563,6 @@ Uninstall_openssl() {
   [ -d "${openssl_install_dir}" ] && rm -rf ${openssl_install_dir}
 }
 
-Print_Python() {
-  [ -d "${python_install_dir}" ] && echo ${python_install_dir}
-}
-
 Print_Nodejs() {
   [ -e "${nodejs_install_dir}" ] && echo ${nodejs_install_dir}
   [ -e "/etc/profile.d/nodejs.sh" ] && echo /etc/profile.d/nodejs.sh
@@ -577,7 +573,7 @@ while :; do
   printf "
 What Are You Doing?
 \t${CMSG} 0${CEND}. Uninstall All
-\t${CMSG} 1${CEND}. Uninstall Nginx/Tengine/OpenResty/Apache/Tomcat
+\t${CMSG} 1${CEND}. Uninstall Nginx/Tengine/OpenResty/Apache/Tomcat/Caddy
 \t${CMSG} 2${CEND}. Uninstall MySQL/MariaDB/Percona
 \t${CMSG} 3${CEND}. Uninstall PostgreSQL
 \t${CMSG} 4${CEND}. Uninstall MongoDB
@@ -588,14 +584,13 @@ What Are You Doing?
 \t${CMSG} 9${CEND}. Uninstall Redis
 \t${CMSG}10${CEND}. Uninstall Memcached
 \t${CMSG}11${CEND}. Uninstall phpMyAdmin
-\t${CMSG}12${CEND}. Uninstall Python (PATH: ${python_install_dir})
-\t${CMSG}13${CEND}. Uninstall Nodejs (PATH: ${nodejs_install_dir})
+\t${CMSG}12${CEND}. Uninstall Nodejs (PATH: ${nodejs_install_dir})
 \t${CMSG} q${CEND}. Exit
 "
   echo
   read -e -p "Please input the correct option: " Number
   if [[ ! "${Number}" =~ ^[0-9,q]$|^1[0-3]$ ]]; then
-    echo "${CWARNING}input error! Please only input 0~13 and q${CEND}"
+    echo "${CWARNING}input error! Please only input 0~12 and q${CEND}"
   else
     case "$Number" in
     0)
@@ -610,7 +605,6 @@ What Are You Doing?
       Print_Memcached_server
       Print_openssl
       Print_phpMyAdmin
-      Print_Python
       Print_Nodejs
       Uninstall_status
       if [ "${uninstall_flag}" == 'y' ]; then
@@ -624,7 +618,6 @@ What Are You Doing?
         Uninstall_Memcached_server
         Uninstall_openssl
         Uninstall_phpMyAdmin
-        . include/python.sh; Uninstall_Python
         . include/nodejs.sh; Uninstall_Nodejs
       else
         exit
@@ -689,11 +682,6 @@ What Are You Doing?
       [ "${uninstall_flag}" == 'y' ] && Uninstall_phpMyAdmin || exit
       ;;
     12)
-      Print_Python
-      Uninstall_status
-      [ "${uninstall_flag}" == 'y' ] && { . include/python.sh; Uninstall_Python; } || exit
-      ;;
-    13)
       Print_Nodejs
       Uninstall_status
       [ "${uninstall_flag}" == 'y' ] && { . include/nodejs.sh; Uninstall_Nodejs; } || exit
@@ -723,7 +711,6 @@ else
   [ "${redis_flag}" == 'y' ] && Print_Redis_server
   [ "${memcached_flag}" == 'y' ] && Print_Memcached_server
   [ "${phpmyadmin_flag}" == 'y' ] && Print_phpMyAdmin
-  [ "${python_flag}" == 'y' ] && Print_Python
   [ "${nodejs_flag}" == 'y' ] && Print_Nodejs
   [ "${all_flag}" == 'y' ] && Print_openssl
   Uninstall_status
@@ -746,7 +733,6 @@ else
     [ "${redis_flag}" == 'y' ] && Uninstall_Redis_server
     [ "${memcached_flag}" == 'y' ] && Uninstall_Memcached_server
     [ "${phpmyadmin_flag}" == 'y' ] && Uninstall_phpMyAdmin
-    [ "${python_flag}" == 'y' ] && { . include/python.sh; Uninstall_Python; }
     [ "${nodejs_flag}" == 'y' ] && { . include/nodejs.sh; Uninstall_Nodejs; }
     [ "${all_flag}" == 'y' ] && Uninstall_openssl
   fi
